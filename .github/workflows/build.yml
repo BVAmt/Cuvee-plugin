@@ -1,0 +1,36 @@
+name: Build Cuvee AU
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-au:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Install AU locally
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R build/Cuvee_artefacts/Release/AU/Cuvee.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+
+      - name: Validate with auval
+        run: auval -v aufx Cuve Ynam
+
+      - name: Package
+        run: |
+          cd build/Cuvee_artefacts/Release/AU
+          zip -r "$GITHUB_WORKSPACE/Cuvee-AU-macOS.zip" Cuvee.component
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cuvee-AU-macOS
+          path: Cuvee-AU-macOS.zip
